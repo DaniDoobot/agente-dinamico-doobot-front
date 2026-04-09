@@ -19,17 +19,22 @@ export default function App() {
   });
 
   const sortedPrompts = useMemo(() => {
-    return [...prompts].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+    return [...prompts].sort(
+      (a, b) => new Date(b.created_at) - new Date(a.created_at)
+    );
   }, [prompts]);
 
   const filteredPrompts = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return sortedPrompts;
-    return sortedPrompts.filter((p) => p.name.toLowerCase().includes(q));
+    return sortedPrompts.filter((p) =>
+      (p.name || "").toLowerCase().includes(q)
+    );
   }, [sortedPrompts, query]);
 
   const selectedPrompt = useMemo(() => {
     if (!filteredPrompts.length && !sortedPrompts.length) return null;
+
     return (
       sortedPrompts.find((p) => p.id === selectedPromptId) ||
       filteredPrompts[0] ||
@@ -48,8 +53,12 @@ export default function App() {
       }
       const data = await resp.json();
       setPrompts(data);
+
       if (data.length && !selectedPromptId) {
-        setSelectedPromptId([...data].sort((a, b) => new Date(b.created_at) - new Date(a.created_at))[0].id);
+        const latest = [...data].sort(
+          (a, b) => new Date(b.created_at) - new Date(a.created_at)
+        )[0];
+        setSelectedPromptId(latest.id);
       }
     } catch (err) {
       setError(err.message || "No se pudieron cargar los prompts");
@@ -109,13 +118,18 @@ export default function App() {
       const created = await createResp.json();
 
       if (form.activate_after_create) {
-        const activateResp = await fetch(`${API_BASE}/prompts/${created.id}/activate`, {
-          method: "POST",
-        });
+        const activateResp = await fetch(
+          `${API_BASE}/prompts/${created.id}/activate`,
+          {
+            method: "POST",
+          }
+        );
 
         if (!activateResp.ok) {
           const msg = await safeReadError(activateResp);
-          throw new Error(msg || `Se guardó, pero no se pudo activar (${activateResp.status})`);
+          throw new Error(
+            msg || `Se guardó, pero no se pudo activar (${activateResp.status})`
+          );
         }
       }
 
@@ -125,7 +139,12 @@ export default function App() {
         activate_after_create: false,
       });
 
-      setSuccess(form.activate_after_create ? "Prompt guardado y activado." : "Prompt guardado correctamente.");
+      setSuccess(
+        form.activate_after_create
+          ? "Prompt guardado y activado."
+          : "Prompt guardado correctamente."
+      );
+
       await loadPrompts();
       setSelectedPromptId(created.id);
     } catch (err) {
@@ -182,6 +201,7 @@ export default function App() {
 
       setSuccess("Prompt eliminado correctamente.");
       await loadPrompts();
+
       if (selectedPromptId === prompt.id) {
         setSelectedPromptId(null);
       }
@@ -192,17 +212,26 @@ export default function App() {
     }
   }
 
+  const isNarrow = typeof window !== "undefined" && window.innerWidth < 1100;
+
   return (
     <div style={styles.page}>
       <div style={styles.container}>
+        <div style={styles.phoneBanner}>
+          <span>Teléfono para probar simulación:</span>
+          <span style={{ fontWeight: 800 }}>911674759</span>
+        </div>
+
         <div style={styles.header}>
           <div>
             <div style={styles.eyebrow}>Prompt Manager</div>
             <h1 style={styles.title}>Gestión de prompts del agente de voz</h1>
             <p style={styles.subtitle}>
-              Crea, revisa, activa y elimina prompts de forma visual. El detalle completo se muestra a la derecha.
+              Crea, revisa, activa y elimina prompts de forma visual. El detalle
+              completo se muestra a la derecha.
             </p>
           </div>
+
           <div style={styles.stats}>
             <div>
               <div style={styles.statLabel}>Prompts totales</div>
@@ -224,15 +253,22 @@ export default function App() {
           </div>
         )}
 
-        <div style={styles.mainGrid}>
+        <div
+          style={{
+            ...styles.mainGrid,
+            gridTemplateColumns: isNarrow ? "1fr" : "420px minmax(0, 1fr)",
+          }}
+        >
           <section style={styles.leftPanel}>
             <div style={styles.sectionHeader}>
               <div>
                 <h2 style={styles.sectionTitle}>Listado de prompts</h2>
                 <p style={styles.sectionText}>
-                  Se muestra solo el nombre. Selecciona uno para ver el contenido completo.
+                  Se muestra solo el nombre. Selecciona uno para ver el
+                  contenido completo.
                 </p>
               </div>
+
               <button onClick={loadPrompts} style={styles.secondaryButton}>
                 Recargar
               </button>
@@ -251,11 +287,14 @@ export default function App() {
             {loading ? (
               <div style={styles.placeholder}>Cargando prompts...</div>
             ) : filteredPrompts.length === 0 ? (
-              <div style={styles.placeholder}>No hay prompts que coincidan con la búsqueda.</div>
+              <div style={styles.placeholder}>
+                No hay prompts que coincidan con la búsqueda.
+              </div>
             ) : (
               <div style={styles.listScroller}>
                 {filteredPrompts.map((prompt) => {
                   const selected = selectedPrompt?.id === prompt.id;
+
                   return (
                     <article
                       key={prompt.id}
@@ -269,9 +308,14 @@ export default function App() {
                         <div style={{ minWidth: 0, flex: 1 }}>
                           <div style={styles.listNameRow}>
                             <h3 style={styles.listName}>{prompt.name}</h3>
-                            {prompt.is_active && <span style={styles.activeBadge}>Activo</span>}
+                            {prompt.is_active && (
+                              <span style={styles.activeBadge}>Activo</span>
+                            )}
                           </div>
-                          <div style={styles.promptMeta}>ID {prompt.id} · {formatDate(prompt.created_at)}</div>
+
+                          <div style={styles.promptMeta}>
+                            ID {prompt.id} · {formatDate(prompt.created_at)}
+                          </div>
                         </div>
                       </div>
 
@@ -325,13 +369,21 @@ export default function App() {
                 <div>
                   <div style={styles.promptTitleRow}>
                     <h3 style={styles.detailTitle}>{selectedPrompt.name}</h3>
-                    {selectedPrompt.is_active && <span style={styles.activeBadge}>Activo</span>}
+                    {selectedPrompt.is_active && (
+                      <span style={styles.activeBadge}>Activo</span>
+                    )}
                   </div>
-                  <div style={styles.promptMeta}>ID {selectedPrompt.id} · {formatDate(selectedPrompt.created_at)}</div>
+
+                  <div style={styles.promptMeta}>
+                    ID {selectedPrompt.id} · {formatDate(selectedPrompt.created_at)}
+                  </div>
+
                   <div style={styles.detailBox}>{selectedPrompt.base_prompt}</div>
                 </div>
               ) : (
-                <div style={styles.placeholder}>Selecciona un prompt para ver el detalle.</div>
+                <div style={styles.placeholder}>
+                  Selecciona un prompt para ver el detalle.
+                </div>
               )}
             </section>
 
@@ -371,7 +423,9 @@ export default function App() {
                     <input
                       type="checkbox"
                       checked={form.activate_after_create}
-                      onChange={(e) => updateForm("activate_after_create", e.target.checked)}
+                      onChange={(e) =>
+                        updateForm("activate_after_create", e.target.checked)
+                      }
                     />
                     <span>Dejar este prompt activo al guardarlo</span>
                   </label>
@@ -379,12 +433,23 @@ export default function App() {
                   <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
                     <button
                       type="button"
-                      onClick={() => setForm({ name: "", base_prompt: "", activate_after_create: false })}
+                      onClick={() =>
+                        setForm({
+                          name: "",
+                          base_prompt: "",
+                          activate_after_create: false,
+                        })
+                      }
                       style={styles.secondaryButton}
                     >
                       Limpiar
                     </button>
-                    <button type="submit" disabled={saving} style={styles.primaryButton}>
+
+                    <button
+                      type="submit"
+                      disabled={saving}
+                      style={styles.primaryButton}
+                    >
                       {saving ? "Guardando..." : "Guardar prompt"}
                     </button>
                   </div>
@@ -426,11 +491,29 @@ const styles = {
     color: "#0f172a",
     fontFamily: "Inter, system-ui, sans-serif",
   },
+
   container: {
     maxWidth: 1400,
     margin: "0 auto",
     padding: "32px 24px 40px",
+    boxSizing: "border-box",
   },
+
+  phoneBanner: {
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 10,
+    background: "#eff6ff",
+    color: "#1d4ed8",
+    border: "1px solid #bfdbfe",
+    borderRadius: 999,
+    padding: "10px 14px",
+    fontSize: 14,
+    fontWeight: 700,
+    marginBottom: 18,
+    flexWrap: "wrap",
+  },
+
   header: {
     display: "flex",
     justifyContent: "space-between",
@@ -439,6 +522,7 @@ const styles = {
     marginBottom: 28,
     flexWrap: "wrap",
   },
+
   eyebrow: {
     fontSize: 12,
     textTransform: "uppercase",
@@ -446,12 +530,14 @@ const styles = {
     color: "#64748b",
     fontWeight: 700,
   },
+
   title: {
     margin: "8px 0 0 0",
     fontSize: 42,
     lineHeight: 1.1,
     color: "#0f172a",
   },
+
   subtitle: {
     marginTop: 12,
     maxWidth: 760,
@@ -459,6 +545,7 @@ const styles = {
     lineHeight: 1.6,
     fontSize: 16,
   },
+
   stats: {
     display: "grid",
     gridTemplateColumns: "1fr 1fr",
@@ -470,23 +557,26 @@ const styles = {
     minWidth: 240,
     boxShadow: "0 10px 30px rgba(15, 23, 42, 0.06)",
   },
+
   statLabel: {
     fontSize: 12,
     textTransform: "uppercase",
     letterSpacing: "0.06em",
     color: "#64748b",
   },
+
   statValue: {
     marginTop: 4,
     fontSize: 30,
     fontWeight: 700,
   },
+
   mainGrid: {
     display: "grid",
-    gridTemplateColumns: "420px minmax(0, 1fr)",
     gap: 24,
     alignItems: "start",
   },
+
   leftPanel: {
     background: "rgba(255,255,255,0.92)",
     borderRadius: 28,
@@ -496,18 +586,29 @@ const styles = {
     display: "flex",
     flexDirection: "column",
     minHeight: 780,
+    minWidth: 0,
+    boxSizing: "border-box",
   },
+
   rightColumn: {
     display: "grid",
     gap: 24,
+    minWidth: 0,
+    width: "100%",
   },
+
   cardStrong: {
     background: "rgba(255,255,255,0.96)",
     borderRadius: 28,
     border: "1px solid #dbe4f0",
     padding: 24,
     boxShadow: "0 12px 28px rgba(15, 23, 42, 0.06)",
+    width: "100%",
+    minWidth: 0,
+    boxSizing: "border-box",
+    overflow: "hidden",
   },
+
   sectionHeader: {
     display: "flex",
     justifyContent: "space-between",
@@ -516,30 +617,39 @@ const styles = {
     marginBottom: 18,
     flexWrap: "wrap",
   },
+
   sectionHeaderSimple: {
     marginBottom: 18,
   },
+
   sectionTitle: {
     margin: 0,
     fontSize: 26,
     color: "#0f172a",
   },
+
   sectionText: {
     marginTop: 8,
     color: "#64748b",
     lineHeight: 1.5,
     fontSize: 14,
   },
+
   searchRow: {
     marginBottom: 16,
+    width: "100%",
+    minWidth: 0,
   },
+
   listScroller: {
     display: "grid",
     gap: 12,
     overflowY: "auto",
     maxHeight: 620,
     paddingRight: 4,
+    minWidth: 0,
   },
+
   listItem: {
     border: "1px solid #e2e8f0",
     borderRadius: 20,
@@ -547,47 +657,58 @@ const styles = {
     background: "#fff",
     cursor: "pointer",
     transition: "all 0.2s ease",
+    boxSizing: "border-box",
   },
+
   listItemSelected: {
     border: "1px solid #86efac",
     background: "#f0fdf4",
     boxShadow: "0 0 0 3px rgba(34,197,94,0.08)",
   },
+
   listItemTop: {
     display: "flex",
     justifyContent: "space-between",
     gap: 12,
     alignItems: "flex-start",
   },
+
   listNameRow: {
     display: "flex",
     alignItems: "center",
     gap: 8,
     flexWrap: "wrap",
   },
+
   listName: {
     margin: 0,
     fontSize: 20,
     lineHeight: 1.2,
     color: "#0f172a",
+    wordBreak: "break-word",
   },
+
   listActions: {
     display: "flex",
     gap: 8,
     marginTop: 14,
     flexWrap: "wrap",
   },
+
   promptTitleRow: {
     display: "flex",
     alignItems: "center",
     gap: 10,
     flexWrap: "wrap",
   },
+
   detailTitle: {
     margin: 0,
     fontSize: 24,
     color: "#0f172a",
+    wordBreak: "break-word",
   },
+
   activeBadge: {
     background: "#059669",
     color: "#fff",
@@ -596,6 +717,7 @@ const styles = {
     fontSize: 12,
     fontWeight: 700,
   },
+
   promptMeta: {
     marginTop: 8,
     fontSize: 12,
@@ -603,6 +725,7 @@ const styles = {
     textTransform: "uppercase",
     letterSpacing: "0.04em",
   },
+
   detailBox: {
     marginTop: 18,
     border: "1px solid #e2e8f0",
@@ -615,7 +738,11 @@ const styles = {
     fontSize: 14,
     maxHeight: 420,
     overflowY: "auto",
+    overflowX: "auto",
+    boxSizing: "border-box",
+    width: "100%",
   },
+
   placeholder: {
     border: "1px dashed #cbd5e1",
     background: "#f8fafc",
@@ -624,6 +751,7 @@ const styles = {
     color: "#64748b",
     fontSize: 14,
   },
+
   label: {
     display: "block",
     marginBottom: 8,
@@ -631,8 +759,11 @@ const styles = {
     fontWeight: 700,
     color: "#334155",
   },
+
   input: {
     width: "100%",
+    maxWidth: "100%",
+    boxSizing: "border-box",
     borderRadius: 18,
     border: "1px solid #cbd5e1",
     padding: "14px 16px",
@@ -640,9 +771,13 @@ const styles = {
     outline: "none",
     color: "#0f172a",
     background: "#fff",
+    display: "block",
   },
+
   textarea: {
     width: "100%",
+    maxWidth: "100%",
+    boxSizing: "border-box",
     borderRadius: 18,
     border: "1px solid #cbd5e1",
     padding: "14px 16px",
@@ -653,7 +788,9 @@ const styles = {
     color: "#0f172a",
     background: "#fff",
     minHeight: 280,
+    display: "block",
   },
+
   formFooter: {
     display: "flex",
     justifyContent: "space-between",
@@ -661,6 +798,7 @@ const styles = {
     flexWrap: "wrap",
     alignItems: "center",
   },
+
   checkboxBox: {
     display: "flex",
     gap: 10,
@@ -672,6 +810,7 @@ const styles = {
     color: "#334155",
     background: "#fff",
   },
+
   primaryButton: {
     background: "#0f172a",
     color: "#fff",
@@ -681,6 +820,7 @@ const styles = {
     fontWeight: 700,
     cursor: "pointer",
   },
+
   primaryButtonSmall: {
     background: "#0f172a",
     color: "#fff",
@@ -691,6 +831,7 @@ const styles = {
     cursor: "pointer",
     fontSize: 13,
   },
+
   secondaryButton: {
     background: "#fff",
     color: "#334155",
@@ -700,6 +841,7 @@ const styles = {
     fontWeight: 700,
     cursor: "pointer",
   },
+
   deleteButton: {
     background: "#fff1f2",
     color: "#be123c",
@@ -710,10 +852,12 @@ const styles = {
     cursor: "pointer",
     fontSize: 13,
   },
+
   activeButton: {
     background: "#059669",
     cursor: "default",
   },
+
   errorBox: {
     border: "1px solid #fecdd3",
     background: "#fff1f2",
@@ -723,6 +867,7 @@ const styles = {
     fontSize: 14,
     marginBottom: 10,
   },
+
   successBox: {
     border: "1px solid #bbf7d0",
     background: "#f0fdf4",
