@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 
-const API_BASE = "http://postgres-api-6kms0d-135644-91-98-230-119.traefik.me";
+const API_BASE = "https://serviceA12M23.doobot.ai";
 
 export default function App() {
   const [prompts, setPrompts] = useState([]);
