@@ -8,6 +8,7 @@ export default function App() {
   const [saving, setSaving] = useState(false);
   const [activatingId, setActivatingId] = useState(null);
   const [deletingId, setDeletingId] = useState(null);
+  const [editingId, setEditingId] = useState(null);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [selectedPromptId, setSelectedPromptId] = useState(null);
@@ -15,7 +16,13 @@ export default function App() {
   const [form, setForm] = useState({
     name: "",
     base_prompt: "",
+    initial_message: "",
     activate_after_create: false,
+  });
+  const [editForm, setEditForm] = useState({
+    name: "",
+    base_prompt: "",
+    initial_message: "",
   });
 
   const sortedPrompts = useMemo(() => {
@@ -81,6 +88,30 @@ export default function App() {
     setForm((prev) => ({ ...prev, [field]: value }));
   }
 
+  function updateEditForm(field, value) {
+    setEditForm((prev) => ({ ...prev, [field]: value }));
+  }
+
+  function startEditing(prompt) {
+    setEditingId(prompt.id);
+    setEditForm({
+      name: prompt.name || "",
+      base_prompt: prompt.base_prompt || "",
+      initial_message: prompt.initial_message || "",
+    });
+    setError("");
+    setSuccess("");
+  }
+
+  function cancelEditing() {
+    setEditingId(null);
+    setEditForm({
+      name: "",
+      base_prompt: "",
+      initial_message: "",
+    });
+  }
+
   async function handleCreatePrompt(e) {
     e.preventDefault();
     setError("");
@@ -96,6 +127,11 @@ export default function App() {
       return;
     }
 
+    if (!form.initial_message.trim()) {
+      setError("Debes indicar el saludo inicial del agente.");
+      return;
+    }
+
     setSaving(true);
 
     try {
@@ -107,6 +143,7 @@ export default function App() {
         body: JSON.stringify({
           name: form.name.trim(),
           base_prompt: form.base_prompt,
+          initial_message: form.initial_message.trim(),
         }),
       });
 
@@ -136,6 +173,7 @@ export default function App() {
       setForm({
         name: "",
         base_prompt: "",
+        initial_message: "",
         activate_after_create: false,
       });
 
@@ -149,6 +187,55 @@ export default function App() {
       setSelectedPromptId(created.id);
     } catch (err) {
       setError(err.message || "No se pudo guardar el prompt");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleUpdatePrompt(e) {
+    e.preventDefault();
+
+    if (!selectedPrompt) return;
+
+    setError("");
+    setSuccess("");
+    setSaving(true);
+
+    try {
+      if (!editForm.name.trim()) {
+        throw new Error("Debes indicar un nombre para el prompt.");
+      }
+
+      if (!editForm.base_prompt.trim()) {
+        throw new Error("Debes indicar el texto del prompt.");
+      }
+
+      if (!editForm.initial_message.trim()) {
+        throw new Error("Debes indicar el saludo inicial del agente.");
+      }
+
+      const resp = await fetch(`${API_BASE}/prompts/${selectedPrompt.id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          name: editForm.name.trim(),
+          base_prompt: editForm.base_prompt,
+          initial_message: editForm.initial_message.trim(),
+        }),
+      });
+
+      if (!resp.ok) {
+        const msg = await safeReadError(resp);
+        throw new Error(msg || `No se pudo actualizar (${resp.status})`);
+      }
+
+      await loadPrompts();
+      setSuccess("Prompt actualizado correctamente.");
+      setEditingId(null);
+    } catch (err) {
+      setError(err.message || "No se pudo actualizar el prompt");
     } finally {
       setSaving(false);
     }
@@ -227,8 +314,7 @@ export default function App() {
             <div style={styles.eyebrow}>Prompt Manager</div>
             <h1 style={styles.title}>Gestión de prompts del agente de voz</h1>
             <p style={styles.subtitle}>
-              Crea, revisa, activa y elimina prompts de forma visual. El detalle
-              completo se muestra a la derecha.
+              Crea, revisa, activa, edita y elimina prompts de forma visual.
             </p>
           </div>
 
@@ -264,8 +350,7 @@ export default function App() {
               <div>
                 <h2 style={styles.sectionTitle}>Listado de prompts</h2>
                 <p style={styles.sectionText}>
-                  Se muestra solo el nombre. Selecciona uno para ver el
-                  contenido completo.
+                  Se muestra solo el nombre. Selecciona uno para ver o editar.
                 </p>
               </div>
 
@@ -341,6 +426,17 @@ export default function App() {
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
+                            setSelectedPromptId(prompt.id);
+                            startEditing(prompt);
+                          }}
+                          style={styles.secondaryButtonSmall}
+                        >
+                          Editar
+                        </button>
+
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
                             handleDelete(prompt);
                           }}
                           disabled={deletingId === prompt.id}
@@ -378,7 +474,17 @@ export default function App() {
                     ID {selectedPrompt.id} · {formatDate(selectedPrompt.created_at)}
                   </div>
 
-                  <div style={styles.detailBox}>{selectedPrompt.base_prompt}</div>
+                  <div style={{ marginTop: 18 }}>
+                    <div style={styles.label}>Saludo inicial</div>
+                    <div style={styles.detailBoxSmall}>
+                      {selectedPrompt.initial_message || "—"}
+                    </div>
+                  </div>
+
+                  <div style={{ marginTop: 18 }}>
+                    <div style={styles.label}>Texto completo del prompt</div>
+                    <div style={styles.detailBox}>{selectedPrompt.base_prompt}</div>
+                  </div>
                 </div>
               ) : (
                 <div style={styles.placeholder}>
@@ -387,75 +493,147 @@ export default function App() {
               )}
             </section>
 
-            <section style={styles.cardStrong}>
-              <div style={styles.sectionHeaderSimple}>
-                <h2 style={styles.sectionTitle}>Crear nuevo prompt</h2>
-                <p style={styles.sectionText}>
-                  Pega aquí el prompt completo y guárdalo en la base de datos.
-                </p>
-              </div>
-
-              <form onSubmit={handleCreatePrompt} style={{ display: "grid", gap: 18 }}>
-                <div>
-                  <label style={styles.label}>Nombre del prompt</label>
-                  <input
-                    type="text"
-                    value={form.name}
-                    onChange={(e) => updateForm("name", e.target.value)}
-                    placeholder="Ej. Miguel agradecido por ascenso"
-                    style={styles.input}
-                  />
+            {editingId && selectedPrompt?.id === editingId ? (
+              <section style={styles.cardStrong}>
+                <div style={styles.sectionHeaderSimple}>
+                  <h2 style={styles.sectionTitle}>Editar prompt</h2>
+                  <p style={styles.sectionText}>
+                    Modifica nombre, saludo inicial y texto completo.
+                  </p>
                 </div>
 
-                <div>
-                  <label style={styles.label}>Texto completo del prompt</label>
-                  <textarea
-                    rows={14}
-                    value={form.base_prompt}
-                    onChange={(e) => updateForm("base_prompt", e.target.value)}
-                    placeholder="Pega aquí el prompt completo..."
-                    style={styles.textarea}
-                  />
-                </div>
-
-                <div style={styles.formFooter}>
-                  <label style={styles.checkboxBox}>
+                <form onSubmit={handleUpdatePrompt} style={{ display: "grid", gap: 18 }}>
+                  <div>
+                    <label style={styles.label}>Nombre del prompt</label>
                     <input
-                      type="checkbox"
-                      checked={form.activate_after_create}
-                      onChange={(e) =>
-                        updateForm("activate_after_create", e.target.checked)
-                      }
+                      type="text"
+                      value={editForm.name}
+                      onChange={(e) => updateEditForm("name", e.target.value)}
+                      style={styles.input}
                     />
-                    <span>Dejar este prompt activo al guardarlo</span>
-                  </label>
+                  </div>
 
-                  <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+                  <div>
+                    <label style={styles.label}>Saludo inicial del agente</label>
+                    <input
+                      type="text"
+                      value={editForm.initial_message}
+                      onChange={(e) =>
+                        updateEditForm("initial_message", e.target.value)
+                      }
+                      placeholder="Ej. Sí, dime."
+                      style={styles.input}
+                    />
+                  </div>
+
+                  <div>
+                    <label style={styles.label}>Texto completo del prompt</label>
+                    <textarea
+                      rows={14}
+                      value={editForm.base_prompt}
+                      onChange={(e) => updateEditForm("base_prompt", e.target.value)}
+                      style={styles.textarea}
+                    />
+                  </div>
+
+                  <div style={styles.formFooter}>
                     <button
                       type="button"
-                      onClick={() =>
-                        setForm({
-                          name: "",
-                          base_prompt: "",
-                          activate_after_create: false,
-                        })
-                      }
+                      onClick={cancelEditing}
                       style={styles.secondaryButton}
                     >
-                      Limpiar
+                      Cancelar
                     </button>
 
-                    <button
-                      type="submit"
-                      disabled={saving}
-                      style={styles.primaryButton}
-                    >
-                      {saving ? "Guardando..." : "Guardar prompt"}
+                    <button type="submit" disabled={saving} style={styles.primaryButton}>
+                      {saving ? "Guardando..." : "Guardar cambios"}
                     </button>
                   </div>
+                </form>
+              </section>
+            ) : (
+              <section style={styles.cardStrong}>
+                <div style={styles.sectionHeaderSimple}>
+                  <h2 style={styles.sectionTitle}>Crear nuevo prompt</h2>
+                  <p style={styles.sectionText}>
+                    Pega aquí el prompt completo y guárdalo en la base de datos.
+                  </p>
                 </div>
-              </form>
-            </section>
+
+                <form onSubmit={handleCreatePrompt} style={{ display: "grid", gap: 18 }}>
+                  <div>
+                    <label style={styles.label}>Nombre del prompt</label>
+                    <input
+                      type="text"
+                      value={form.name}
+                      onChange={(e) => updateForm("name", e.target.value)}
+                      placeholder="Ej. Miguel agradecido por ascenso"
+                      style={styles.input}
+                    />
+                  </div>
+
+                  <div>
+                    <label style={styles.label}>Saludo inicial del agente</label>
+                    <input
+                      type="text"
+                      value={form.initial_message}
+                      onChange={(e) => updateForm("initial_message", e.target.value)}
+                      placeholder="Ej. Sí, dime."
+                      style={styles.input}
+                    />
+                  </div>
+
+                  <div>
+                    <label style={styles.label}>Texto completo del prompt</label>
+                    <textarea
+                      rows={14}
+                      value={form.base_prompt}
+                      onChange={(e) => updateForm("base_prompt", e.target.value)}
+                      placeholder="Pega aquí el prompt completo..."
+                      style={styles.textarea}
+                    />
+                  </div>
+
+                  <div style={styles.formFooter}>
+                    <label style={styles.checkboxBox}>
+                      <input
+                        type="checkbox"
+                        checked={form.activate_after_create}
+                        onChange={(e) =>
+                          updateForm("activate_after_create", e.target.checked)
+                        }
+                      />
+                      <span>Dejar este prompt activo al guardarlo</span>
+                    </label>
+
+                    <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setForm({
+                            name: "",
+                            base_prompt: "",
+                            initial_message: "",
+                            activate_after_create: false,
+                          })
+                        }
+                        style={styles.secondaryButton}
+                      >
+                        Limpiar
+                      </button>
+
+                      <button
+                        type="submit"
+                        disabled={saving}
+                        style={styles.primaryButton}
+                      >
+                        {saving ? "Guardando..." : "Guardar prompt"}
+                      </button>
+                    </div>
+                  </div>
+                </form>
+              </section>
+            )}
           </section>
         </div>
       </div>
@@ -727,7 +905,7 @@ const styles = {
   },
 
   detailBox: {
-    marginTop: 18,
+    marginTop: 8,
     border: "1px solid #e2e8f0",
     background: "#f8fafc",
     borderRadius: 20,
@@ -739,6 +917,20 @@ const styles = {
     maxHeight: 420,
     overflowY: "auto",
     overflowX: "auto",
+    boxSizing: "border-box",
+    width: "100%",
+  },
+
+  detailBoxSmall: {
+    marginTop: 8,
+    border: "1px solid #e2e8f0",
+    background: "#f8fafc",
+    borderRadius: 20,
+    padding: 16,
+    whiteSpace: "pre-wrap",
+    lineHeight: 1.6,
+    color: "#334155",
+    fontSize: 14,
     boxSizing: "border-box",
     width: "100%",
   },
@@ -840,6 +1032,17 @@ const styles = {
     padding: "12px 18px",
     fontWeight: 700,
     cursor: "pointer",
+  },
+
+  secondaryButtonSmall: {
+    background: "#fff",
+    color: "#334155",
+    border: "1px solid #d9e2ec",
+    borderRadius: 14,
+    padding: "10px 14px",
+    fontWeight: 700,
+    cursor: "pointer",
+    fontSize: 13,
   },
 
   deleteButton: {
