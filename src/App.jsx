@@ -79,7 +79,10 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    if (selectedPromptId && !sortedPrompts.some((p) => p.id === selectedPromptId)) {
+    if (
+      selectedPromptId &&
+      !sortedPrompts.some((p) => p.id === selectedPromptId)
+    ) {
       setSelectedPromptId(sortedPrompts[0]?.id ?? null);
     }
   }, [sortedPrompts, selectedPromptId]);
@@ -122,29 +125,33 @@ export default function App() {
       return;
     }
 
-    if (!form.base_prompt.trim()) {
-      setError("Debes pegar el texto del prompt.");
+    if (!form.initial_message.trim()) {
+      setError("Debes indicar el saludo inicial del agente.");
       return;
     }
 
-    if (!form.initial_message.trim()) {
-      setError("Debes indicar el saludo inicial del agente.");
+    if (!form.base_prompt.trim()) {
+      setError("Debes pegar el texto del prompt.");
       return;
     }
 
     setSaving(true);
 
     try {
+      const payload = {
+        name: form.name.trim(),
+        base_prompt: form.base_prompt,
+        initial_message: form.initial_message.trim(),
+      };
+
+      console.log("PAYLOAD CREATE", payload);
+
       const createResp = await fetch(`${API_BASE}/prompts`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          name: form.name.trim(),
-          base_prompt: form.base_prompt,
-          initial_message: form.initial_message.trim(),
-        }),
+        body: JSON.stringify(payload),
       });
 
       if (!createResp.ok) {
@@ -153,6 +160,7 @@ export default function App() {
       }
 
       const created = await createResp.json();
+      console.log("CREATED PROMPT RESPONSE", created);
 
       if (form.activate_after_create) {
         const activateResp = await fetch(
@@ -206,30 +214,37 @@ export default function App() {
         throw new Error("Debes indicar un nombre para el prompt.");
       }
 
+      if (!editForm.initial_message.trim()) {
+        throw new Error("Debes indicar el saludo inicial del agente.");
+      }
+
       if (!editForm.base_prompt.trim()) {
         throw new Error("Debes indicar el texto del prompt.");
       }
 
-      if (!editForm.initial_message.trim()) {
-        throw new Error("Debes indicar el saludo inicial del agente.");
-      }
+      const payload = {
+        name: editForm.name.trim(),
+        base_prompt: editForm.base_prompt,
+        initial_message: editForm.initial_message.trim(),
+      };
+
+      console.log("PAYLOAD UPDATE", payload);
 
       const resp = await fetch(`${API_BASE}/prompts/${selectedPrompt.id}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          name: editForm.name.trim(),
-          base_prompt: editForm.base_prompt,
-          initial_message: editForm.initial_message.trim(),
-        }),
+        body: JSON.stringify(payload),
       });
 
       if (!resp.ok) {
         const msg = await safeReadError(resp);
         throw new Error(msg || `No se pudo actualizar (${resp.status})`);
       }
+
+      const updated = await resp.json();
+      console.log("UPDATED PROMPT RESPONSE", updated);
 
       await loadPrompts();
       setSuccess("Prompt actualizado correctamente.");
@@ -299,7 +314,8 @@ export default function App() {
     }
   }
 
-  const isNarrow = typeof window !== "undefined" && window.innerWidth < 1100;
+  const isNarrow =
+    typeof window !== "undefined" && window.innerWidth < 1100;
 
   return (
     <div style={styles.page}>
@@ -410,7 +426,9 @@ export default function App() {
                             e.stopPropagation();
                             handleActivate(prompt.id);
                           }}
-                          disabled={prompt.is_active || activatingId === prompt.id}
+                          disabled={
+                            prompt.is_active || activatingId === prompt.id
+                          }
                           style={{
                             ...styles.primaryButtonSmall,
                             ...(prompt.is_active ? styles.activeButton : {}),
@@ -477,7 +495,10 @@ export default function App() {
                   <div style={{ marginTop: 18 }}>
                     <div style={styles.label}>Saludo inicial</div>
                     <div style={styles.detailBoxSmall}>
-                      {selectedPrompt.initial_message || "—"}
+                      {selectedPrompt.initial_message &&
+                      selectedPrompt.initial_message.trim()
+                        ? selectedPrompt.initial_message
+                        : "—"}
                     </div>
                   </div>
 
@@ -502,7 +523,10 @@ export default function App() {
                   </p>
                 </div>
 
-                <form onSubmit={handleUpdatePrompt} style={{ display: "grid", gap: 18 }}>
+                <form
+                  onSubmit={handleUpdatePrompt}
+                  style={{ display: "grid", gap: 18 }}
+                >
                   <div>
                     <label style={styles.label}>Nombre del prompt</label>
                     <input
@@ -531,7 +555,9 @@ export default function App() {
                     <textarea
                       rows={14}
                       value={editForm.base_prompt}
-                      onChange={(e) => updateEditForm("base_prompt", e.target.value)}
+                      onChange={(e) =>
+                        updateEditForm("base_prompt", e.target.value)
+                      }
                       style={styles.textarea}
                     />
                   </div>
@@ -545,7 +571,11 @@ export default function App() {
                       Cancelar
                     </button>
 
-                    <button type="submit" disabled={saving} style={styles.primaryButton}>
+                    <button
+                      type="submit"
+                      disabled={saving}
+                      style={styles.primaryButton}
+                    >
                       {saving ? "Guardando..." : "Guardar cambios"}
                     </button>
                   </div>
@@ -560,7 +590,10 @@ export default function App() {
                   </p>
                 </div>
 
-                <form onSubmit={handleCreatePrompt} style={{ display: "grid", gap: 18 }}>
+                <form
+                  onSubmit={handleCreatePrompt}
+                  style={{ display: "grid", gap: 18 }}
+                >
                   <div>
                     <label style={styles.label}>Nombre del prompt</label>
                     <input
@@ -577,7 +610,9 @@ export default function App() {
                     <input
                       type="text"
                       value={form.initial_message}
-                      onChange={(e) => updateForm("initial_message", e.target.value)}
+                      onChange={(e) =>
+                        updateForm("initial_message", e.target.value)
+                      }
                       placeholder="Ej. Sí, dime."
                       style={styles.input}
                     />
