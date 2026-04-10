@@ -108,6 +108,7 @@ export default function App() {
 
   function startEditing(prompt) {
     setEditingId(prompt.id);
+    setSelectedPromptId(prompt.id);
     setEditForm({
       name: prompt.name || "",
       base_prompt: prompt.base_prompt || "",
@@ -310,6 +311,9 @@ export default function App() {
       if (selectedPromptId === prompt.id) {
         setSelectedPromptId(null);
       }
+      if (editingId === prompt.id) {
+        setEditingId(null);
+      }
     } catch (err) {
       setError(err.message || "No se pudo eliminar el prompt");
     } finally {
@@ -384,11 +388,16 @@ export default function App() {
         >
           <section style={styles.leftPanel}>
             <div style={styles.panelHeader}>
-              <div>
+              <div style={{ width: "100%" }}>
                 <h2 style={styles.panelTitle}>Listado de prompts</h2>
                 <p style={styles.panelText}>
                   Selecciona un prompt para ver el detalle o editarlo.
                 </p>
+
+                <div style={styles.phoneInfoInline}>
+                  <span style={styles.phoneInfoLabel}>Número de prueba</span>
+                  <span style={styles.phoneInfoValue}>911 674 759</span>
+                </div>
               </div>
 
               <button onClick={loadPrompts} style={styles.secondaryButton}>
@@ -416,6 +425,7 @@ export default function App() {
               <div style={styles.listScroller}>
                 {filteredPrompts.map((prompt) => {
                   const selected = selectedPrompt?.id === prompt.id;
+                  const isEditingThisPrompt = editingId === prompt.id;
 
                   return (
                     <article
@@ -461,12 +471,14 @@ export default function App() {
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
-                            setSelectedPromptId(prompt.id);
                             startEditing(prompt);
                           }}
-                          style={styles.secondaryButtonSmall}
+                          style={{
+                            ...styles.secondaryButtonSmall,
+                            ...(isEditingThisPrompt ? styles.editingButton : {}),
+                          }}
                         >
-                          Editar
+                          {isEditingThisPrompt ? "Editando" : "Editar"}
                         </button>
 
                         <button
@@ -756,7 +768,7 @@ const styles = {
   },
 
   doobotLogo: {
-    height: 44,
+    height: 51,
     width: "auto",
     objectFit: "contain",
   },
@@ -901,6 +913,32 @@ const styles = {
     color: "#6b7280",
     lineHeight: 1.5,
     fontSize: 14,
+  },
+
+  phoneInfoInline: {
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 10,
+    marginTop: 14,
+    background: "#f9fafb",
+    border: "1px solid #e5e7eb",
+    borderRadius: 999,
+    padding: "9px 14px",
+    flexWrap: "wrap",
+  },
+
+  phoneInfoLabel: {
+    fontSize: 12,
+    fontWeight: 800,
+    letterSpacing: "0.06em",
+    color: "#6b7280",
+    textTransform: "uppercase",
+  },
+
+  phoneInfoValue: {
+    fontSize: 16,
+    fontWeight: 800,
+    color: "#111827",
   },
 
   cardTitle: {
@@ -1142,6 +1180,13 @@ const styles = {
     fontWeight: 800,
     cursor: "pointer",
     fontSize: 13,
+  },
+
+  editingButton: {
+    background: "#e8f1ff",
+    color: "#1d4ed8",
+    border: "1px solid #bfdbfe",
+    boxShadow: "0 0 0 3px rgba(59,130,246,0.12)",
   },
 
   deleteButton: {
