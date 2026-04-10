@@ -1,4 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
+import doobotLogo from "./assets/logo-doobot-negro.png";
+import bostonLogo from "./assets/logo-boston-medical.png";
 
 const API_BASE = "https://serviceA12M23.doobot.ai";
 
@@ -13,12 +15,14 @@ export default function App() {
   const [success, setSuccess] = useState("");
   const [selectedPromptId, setSelectedPromptId] = useState(null);
   const [query, setQuery] = useState("");
+
   const [form, setForm] = useState({
     name: "",
     base_prompt: "",
     initial_message: "",
     activate_after_create: false,
   });
+
   const [editForm, setEditForm] = useState({
     name: "",
     base_prompt: "",
@@ -30,6 +34,11 @@ export default function App() {
       (a, b) => new Date(b.created_at) - new Date(a.created_at)
     );
   }, [prompts]);
+
+  const activeCount = useMemo(
+    () => sortedPrompts.filter((p) => p.is_active).length,
+    [sortedPrompts]
+  );
 
   const filteredPrompts = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -53,11 +62,13 @@ export default function App() {
   async function loadPrompts() {
     setLoading(true);
     setError("");
+
     try {
       const resp = await fetch(`${API_BASE}/prompts`);
       if (!resp.ok) {
         throw new Error(`Error al cargar prompts (${resp.status})`);
       }
+
       const data = await resp.json();
       setPrompts(data);
 
@@ -144,8 +155,6 @@ export default function App() {
         initial_message: form.initial_message.trim(),
       };
 
-      console.log("PAYLOAD CREATE", payload);
-
       const createResp = await fetch(`${API_BASE}/prompts`, {
         method: "POST",
         headers: {
@@ -160,7 +169,6 @@ export default function App() {
       }
 
       const created = await createResp.json();
-      console.log("CREATED PROMPT RESPONSE", created);
 
       if (form.activate_after_create) {
         const activateResp = await fetch(
@@ -187,7 +195,7 @@ export default function App() {
 
       setSuccess(
         form.activate_after_create
-          ? "Prompt guardado y activado."
+          ? "Prompt guardado y activado correctamente."
           : "Prompt guardado correctamente."
       );
 
@@ -228,8 +236,6 @@ export default function App() {
         initial_message: editForm.initial_message.trim(),
       };
 
-      console.log("PAYLOAD UPDATE", payload);
-
       const resp = await fetch(`${API_BASE}/prompts/${selectedPrompt.id}`, {
         method: "PUT",
         headers: {
@@ -242,9 +248,6 @@ export default function App() {
         const msg = await safeReadError(resp);
         throw new Error(msg || `No se pudo actualizar (${resp.status})`);
       }
-
-      const updated = await resp.json();
-      console.log("UPDATED PROMPT RESPONSE", updated);
 
       await loadPrompts();
       setSuccess("Prompt actualizado correctamente.");
@@ -315,58 +318,76 @@ export default function App() {
   }
 
   const isNarrow =
-    typeof window !== "undefined" && window.innerWidth < 1100;
+    typeof window !== "undefined" && window.innerWidth < 1180;
 
   return (
     <div style={styles.page}>
       <div style={styles.container}>
-        <div style={styles.phoneBanner}>
-          <span>Teléfono para probar simulación:</span>
-          <span style={{ fontWeight: 800 }}>911674759</span>
-        </div>
+        <header style={styles.hero}>
+          <div style={styles.heroTop}>
+            <div style={styles.logoBlockLeft}>
+              <img
+                src={doobotLogo}
+                alt="Doobot.ai"
+                style={styles.doobotLogo}
+              />
+            </div>
 
-        <div style={styles.header}>
-          <div>
-            <div style={styles.eyebrow}>Prompt Manager</div>
-            <h1 style={styles.title}>Gestión de prompts del agente de voz</h1>
-            <p style={styles.subtitle}>
-              Crea, revisa, activa, edita y elimina prompts de forma visual.
-            </p>
+            <div style={styles.logoBlockRight}>
+              <img
+                src={bostonLogo}
+                alt="Boston Medical"
+                style={styles.bostonLogo}
+              />
+            </div>
           </div>
 
-          <div style={styles.stats}>
-            <div>
-              <div style={styles.statLabel}>Prompts totales</div>
-              <div style={styles.statValue}>{sortedPrompts.length}</div>
+          <div
+            style={{
+              ...styles.heroBottom,
+              flexDirection: isNarrow ? "column" : "row",
+              alignItems: isNarrow ? "flex-start" : "flex-end",
+            }}
+          >
+            <div style={{ flex: 1 }}>
+              <h1 style={styles.mainTitle}>Voice Bot Trainer</h1>
             </div>
-            <div>
-              <div style={styles.statLabel}>Activo</div>
-              <div style={{ ...styles.statValue, color: "#059669" }}>
-                {sortedPrompts.filter((p) => p.is_active).length}
+
+            <div style={styles.summaryCard}>
+              <div style={styles.summaryItem}>
+                <div style={styles.summaryLabel}>PROMPTS TOTALES</div>
+                <div style={styles.summaryValue}>{sortedPrompts.length}</div>
+              </div>
+
+              <div style={styles.summaryItem}>
+                <div style={styles.summaryLabel}>ACTIVO</div>
+                <div style={{ ...styles.summaryValue, color: "#35a76b" }}>
+                  {activeCount}
+                </div>
               </div>
             </div>
           </div>
-        </div>
 
-        {(error || success) && (
-          <div style={{ marginBottom: 24 }}>
-            {error && <div style={styles.errorBox}>{error}</div>}
-            {success && <div style={styles.successBox}>{success}</div>}
-          </div>
-        )}
+          {(error || success) && (
+            <div style={{ marginTop: 28 }}>
+              {error && <div style={styles.errorBanner}>{error}</div>}
+              {success && <div style={styles.successBanner}>{success}</div>}
+            </div>
+          )}
+        </header>
 
         <div
           style={{
             ...styles.mainGrid,
-            gridTemplateColumns: isNarrow ? "1fr" : "420px minmax(0, 1fr)",
+            gridTemplateColumns: isNarrow ? "1fr" : "390px minmax(0, 1fr)",
           }}
         >
           <section style={styles.leftPanel}>
-            <div style={styles.sectionHeader}>
+            <div style={styles.panelHeader}>
               <div>
-                <h2 style={styles.sectionTitle}>Listado de prompts</h2>
-                <p style={styles.sectionText}>
-                  Se muestra solo el nombre. Selecciona uno para ver o editar.
+                <h2 style={styles.panelTitle}>Listado de prompts</h2>
+                <p style={styles.panelText}>
+                  Selecciona un prompt para ver el detalle o editarlo.
                 </p>
               </div>
 
@@ -405,19 +426,15 @@ export default function App() {
                         ...(selected ? styles.listItemSelected : {}),
                       }}
                     >
-                      <div style={styles.listItemTop}>
-                        <div style={{ minWidth: 0, flex: 1 }}>
-                          <div style={styles.listNameRow}>
-                            <h3 style={styles.listName}>{prompt.name}</h3>
-                            {prompt.is_active && (
-                              <span style={styles.activeBadge}>Activo</span>
-                            )}
-                          </div>
+                      <div style={styles.listNameRow}>
+                        <h3 style={styles.listName}>{prompt.name}</h3>
+                        {prompt.is_active && (
+                          <span style={styles.activeBadge}>Activo</span>
+                        )}
+                      </div>
 
-                          <div style={styles.promptMeta}>
-                            ID {prompt.id} · {formatDate(prompt.created_at)}
-                          </div>
-                        </div>
+                      <div style={styles.promptMeta}>
+                        ID {prompt.id} · {formatDate(prompt.created_at)}
                       </div>
 
                       <div style={styles.listActions}>
@@ -471,10 +488,10 @@ export default function App() {
           </section>
 
           <section style={styles.rightColumn}>
-            <section style={styles.cardStrong}>
-              <div style={styles.sectionHeaderSimple}>
-                <h2 style={styles.sectionTitle}>Detalle del prompt</h2>
-                <p style={styles.sectionText}>
+            <section style={styles.card}>
+              <div style={styles.cardHeader}>
+                <h2 style={styles.cardTitle}>Detalle del prompt</h2>
+                <p style={styles.cardText}>
                   Aquí se visualiza el contenido completo del prompt seleccionado.
                 </p>
               </div>
@@ -492,7 +509,7 @@ export default function App() {
                     ID {selectedPrompt.id} · {formatDate(selectedPrompt.created_at)}
                   </div>
 
-                  <div style={{ marginTop: 18 }}>
+                  <div style={{ marginTop: 22 }}>
                     <div style={styles.label}>Saludo inicial</div>
                     <div style={styles.detailBoxSmall}>
                       {selectedPrompt.initial_message &&
@@ -502,7 +519,7 @@ export default function App() {
                     </div>
                   </div>
 
-                  <div style={{ marginTop: 18 }}>
+                  <div style={{ marginTop: 22 }}>
                     <div style={styles.label}>Texto completo del prompt</div>
                     <div style={styles.detailBox}>{selectedPrompt.base_prompt}</div>
                   </div>
@@ -515,10 +532,10 @@ export default function App() {
             </section>
 
             {editingId && selectedPrompt?.id === editingId ? (
-              <section style={styles.cardStrong}>
-                <div style={styles.sectionHeaderSimple}>
-                  <h2 style={styles.sectionTitle}>Editar prompt</h2>
-                  <p style={styles.sectionText}>
+              <section style={styles.card}>
+                <div style={styles.cardHeader}>
+                  <h2 style={styles.cardTitle}>Editar prompt</h2>
+                  <p style={styles.cardText}>
                     Modifica nombre, saludo inicial y texto completo.
                   </p>
                 </div>
@@ -582,10 +599,10 @@ export default function App() {
                 </form>
               </section>
             ) : (
-              <section style={styles.cardStrong}>
-                <div style={styles.sectionHeaderSimple}>
-                  <h2 style={styles.sectionTitle}>Crear nuevo prompt</h2>
-                  <p style={styles.sectionText}>
+              <section style={styles.card}>
+                <div style={styles.cardHeader}>
+                  <h2 style={styles.cardTitle}>Crear nuevo prompt</h2>
+                  <p style={styles.cardText}>
                     Pega aquí el prompt completo y guárdalo en la base de datos.
                   </p>
                 </div>
@@ -700,88 +717,125 @@ async function safeReadError(resp) {
 const styles = {
   page: {
     minHeight: "100vh",
-    background: "linear-gradient(180deg, #f8fafc 0%, #eef2ff 100%)",
-    color: "#0f172a",
-    fontFamily: "Inter, system-ui, sans-serif",
+    background: "#f3f4f6",
+    color: "#111827",
+    fontFamily:
+      'Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
   },
 
   container: {
-    maxWidth: 1400,
+    maxWidth: 1440,
     margin: "0 auto",
-    padding: "32px 24px 40px",
+    padding: "28px 22px 48px",
     boxSizing: "border-box",
   },
 
-  phoneBanner: {
-    display: "inline-flex",
-    alignItems: "center",
-    gap: 10,
-    background: "#eff6ff",
-    color: "#1d4ed8",
-    border: "1px solid #bfdbfe",
-    borderRadius: 999,
-    padding: "10px 14px",
-    fontSize: 14,
-    fontWeight: 700,
-    marginBottom: 18,
-    flexWrap: "wrap",
+  hero: {
+    marginBottom: 30,
   },
 
-  header: {
+  heroTop: {
     display: "flex",
     justifyContent: "space-between",
+    alignItems: "flex-start",
     gap: 24,
-    alignItems: "flex-end",
-    marginBottom: 28,
     flexWrap: "wrap",
   },
 
-  eyebrow: {
-    fontSize: 12,
-    textTransform: "uppercase",
-    letterSpacing: "0.22em",
-    color: "#64748b",
-    fontWeight: 700,
+  logoBlockLeft: {
+    display: "flex",
+    alignItems: "center",
   },
 
-  title: {
-    margin: "8px 0 0 0",
-    fontSize: 42,
-    lineHeight: 1.1,
+  logoBlockRight: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "flex-end",
+    flex: 1,
+    minWidth: 220,
+  },
+
+  doobotLogo: {
+    height: 44,
+    width: "auto",
+    objectFit: "contain",
+  },
+
+  bostonLogo: {
+    height: 54,
+    width: "auto",
+    objectFit: "contain",
+    maxWidth: "100%",
+  },
+
+  heroBottom: {
+    display: "flex",
+    justifyContent: "space-between",
+    gap: 28,
+    marginTop: 44,
+  },
+
+  mainTitle: {
+    margin: 0,
+    fontSize: "clamp(52px, 7vw, 92px)",
+    lineHeight: 0.95,
+    fontWeight: 900,
+    letterSpacing: "-0.04em",
+    color: "#000000",
+  },
+
+  summaryCard: {
+    display: "grid",
+    gridTemplateColumns: "1fr 1fr",
+    gap: 28,
+    minWidth: 330,
+    background: "#ffffff",
+    border: "1px solid #d7dde7",
+    borderRadius: 28,
+    padding: "24px 30px",
+    boxShadow: "0 4px 18px rgba(15, 23, 42, 0.04)",
+  },
+
+  summaryItem: {
+    display: "grid",
+    gap: 8,
+    textAlign: "center",
+  },
+
+  summaryLabel: {
+    fontSize: 12,
+    fontWeight: 700,
+    letterSpacing: "0.14em",
+    color: "#98a2b3",
+  },
+
+  summaryValue: {
+    fontSize: 52,
+    lineHeight: 1,
+    fontWeight: 800,
     color: "#0f172a",
   },
 
-  subtitle: {
-    marginTop: 12,
-    maxWidth: 760,
-    color: "#475569",
-    lineHeight: 1.6,
+  successBanner: {
+    border: "1px solid #b7efc5",
+    background: "#edf8ef",
+    color: "#4e9d62",
+    borderRadius: 22,
+    padding: "18px 24px",
     fontSize: 16,
+    fontWeight: 600,
+    textAlign: "center",
   },
 
-  stats: {
-    display: "grid",
-    gridTemplateColumns: "1fr 1fr",
-    gap: 16,
-    background: "rgba(255,255,255,0.92)",
-    border: "1px solid #dbe4f0",
-    borderRadius: 24,
-    padding: 18,
-    minWidth: 240,
-    boxShadow: "0 10px 30px rgba(15, 23, 42, 0.06)",
-  },
-
-  statLabel: {
-    fontSize: 12,
-    textTransform: "uppercase",
-    letterSpacing: "0.06em",
-    color: "#64748b",
-  },
-
-  statValue: {
-    marginTop: 4,
-    fontSize: 30,
-    fontWeight: 700,
+  errorBanner: {
+    border: "1px solid #fecdd3",
+    background: "#fff1f2",
+    color: "#be123c",
+    borderRadius: 22,
+    padding: "18px 24px",
+    fontSize: 16,
+    fontWeight: 600,
+    textAlign: "center",
   },
 
   mainGrid: {
@@ -791,11 +845,11 @@ const styles = {
   },
 
   leftPanel: {
-    background: "rgba(255,255,255,0.92)",
+    background: "#ffffff",
     borderRadius: 28,
-    border: "1px solid #dbe4f0",
+    border: "1px solid #dde3eb",
     padding: 22,
-    boxShadow: "0 12px 28px rgba(15, 23, 42, 0.06)",
+    boxShadow: "0 6px 20px rgba(15, 23, 42, 0.04)",
     display: "flex",
     flexDirection: "column",
     minHeight: 780,
@@ -810,19 +864,19 @@ const styles = {
     width: "100%",
   },
 
-  cardStrong: {
-    background: "rgba(255,255,255,0.96)",
+  card: {
+    background: "#ffffff",
     borderRadius: 28,
-    border: "1px solid #dbe4f0",
+    border: "1px solid #dde3eb",
     padding: 24,
-    boxShadow: "0 12px 28px rgba(15, 23, 42, 0.06)",
+    boxShadow: "0 6px 20px rgba(15, 23, 42, 0.04)",
     width: "100%",
     minWidth: 0,
     boxSizing: "border-box",
     overflow: "hidden",
   },
 
-  sectionHeader: {
+  panelHeader: {
     display: "flex",
     justifyContent: "space-between",
     gap: 16,
@@ -831,19 +885,34 @@ const styles = {
     flexWrap: "wrap",
   },
 
-  sectionHeaderSimple: {
+  cardHeader: {
     marginBottom: 18,
   },
 
-  sectionTitle: {
+  panelTitle: {
     margin: 0,
-    fontSize: 26,
-    color: "#0f172a",
+    fontSize: 24,
+    fontWeight: 800,
+    color: "#111827",
   },
 
-  sectionText: {
+  panelText: {
     marginTop: 8,
-    color: "#64748b",
+    color: "#6b7280",
+    lineHeight: 1.5,
+    fontSize: 14,
+  },
+
+  cardTitle: {
+    margin: 0,
+    fontSize: 26,
+    fontWeight: 800,
+    color: "#111827",
+  },
+
+  cardText: {
+    marginTop: 8,
+    color: "#6b7280",
     lineHeight: 1.5,
     fontSize: 14,
   },
@@ -864,26 +933,19 @@ const styles = {
   },
 
   listItem: {
-    border: "1px solid #e2e8f0",
-    borderRadius: 20,
+    border: "1px solid #e5e7eb",
+    borderRadius: 22,
     padding: 16,
-    background: "#fff",
+    background: "#ffffff",
     cursor: "pointer",
     transition: "all 0.2s ease",
     boxSizing: "border-box",
   },
 
   listItemSelected: {
-    border: "1px solid #86efac",
-    background: "#f0fdf4",
+    border: "1px solid #bbf7d0",
+    background: "#f6fff8",
     boxShadow: "0 0 0 3px rgba(34,197,94,0.08)",
-  },
-
-  listItemTop: {
-    display: "flex",
-    justifyContent: "space-between",
-    gap: 12,
-    alignItems: "flex-start",
   },
 
   listNameRow: {
@@ -895,9 +957,10 @@ const styles = {
 
   listName: {
     margin: 0,
-    fontSize: 20,
+    fontSize: 18,
     lineHeight: 1.2,
-    color: "#0f172a",
+    fontWeight: 800,
+    color: "#111827",
     wordBreak: "break-word",
   },
 
@@ -917,37 +980,38 @@ const styles = {
 
   detailTitle: {
     margin: 0,
-    fontSize: 24,
-    color: "#0f172a",
+    fontSize: 28,
+    fontWeight: 900,
+    color: "#111827",
     wordBreak: "break-word",
   },
 
   activeBadge: {
-    background: "#059669",
-    color: "#fff",
+    background: "#35a76b",
+    color: "#ffffff",
     borderRadius: 999,
-    padding: "6px 10px",
+    padding: "7px 12px",
     fontSize: 12,
-    fontWeight: 700,
+    fontWeight: 800,
   },
 
   promptMeta: {
     marginTop: 8,
     fontSize: 12,
-    color: "#94a3b8",
+    color: "#98a2b3",
     textTransform: "uppercase",
-    letterSpacing: "0.04em",
+    letterSpacing: "0.06em",
   },
 
   detailBox: {
     marginTop: 8,
-    border: "1px solid #e2e8f0",
-    background: "#f8fafc",
+    border: "1px solid #e5e7eb",
+    background: "#f9fafb",
     borderRadius: 20,
     padding: 18,
     whiteSpace: "pre-wrap",
     lineHeight: 1.65,
-    color: "#334155",
+    color: "#374151",
     fontSize: 14,
     maxHeight: 420,
     overflowY: "auto",
@@ -958,24 +1022,24 @@ const styles = {
 
   detailBoxSmall: {
     marginTop: 8,
-    border: "1px solid #e2e8f0",
-    background: "#f8fafc",
+    border: "1px solid #e5e7eb",
+    background: "#f9fafb",
     borderRadius: 20,
     padding: 16,
     whiteSpace: "pre-wrap",
     lineHeight: 1.6,
-    color: "#334155",
+    color: "#374151",
     fontSize: 14,
     boxSizing: "border-box",
     width: "100%",
   },
 
   placeholder: {
-    border: "1px dashed #cbd5e1",
-    background: "#f8fafc",
+    border: "1px dashed #d1d5db",
+    background: "#f9fafb",
     borderRadius: 18,
     padding: 20,
-    color: "#64748b",
+    color: "#6b7280",
     fontSize: 14,
   },
 
@@ -983,8 +1047,8 @@ const styles = {
     display: "block",
     marginBottom: 8,
     fontSize: 14,
-    fontWeight: 700,
-    color: "#334155",
+    fontWeight: 800,
+    color: "#374151",
   },
 
   input: {
@@ -992,12 +1056,12 @@ const styles = {
     maxWidth: "100%",
     boxSizing: "border-box",
     borderRadius: 18,
-    border: "1px solid #cbd5e1",
+    border: "1px solid #d1d5db",
     padding: "14px 16px",
     fontSize: 14,
     outline: "none",
-    color: "#0f172a",
-    background: "#fff",
+    color: "#111827",
+    background: "#ffffff",
     display: "block",
   },
 
@@ -1006,14 +1070,14 @@ const styles = {
     maxWidth: "100%",
     boxSizing: "border-box",
     borderRadius: 18,
-    border: "1px solid #cbd5e1",
+    border: "1px solid #d1d5db",
     padding: "14px 16px",
     fontSize: 14,
     lineHeight: 1.6,
     outline: "none",
     resize: "vertical",
-    color: "#0f172a",
-    background: "#fff",
+    color: "#111827",
+    background: "#ffffff",
     minHeight: 280,
     display: "block",
   },
@@ -1030,52 +1094,52 @@ const styles = {
     display: "flex",
     gap: 10,
     alignItems: "center",
-    border: "1px solid #e2e8f0",
+    border: "1px solid #e5e7eb",
     borderRadius: 16,
     padding: "12px 14px",
     fontSize: 14,
-    color: "#334155",
-    background: "#fff",
+    color: "#374151",
+    background: "#ffffff",
   },
 
   primaryButton: {
-    background: "#0f172a",
-    color: "#fff",
+    background: "#111827",
+    color: "#ffffff",
     border: "none",
     borderRadius: 16,
     padding: "12px 18px",
-    fontWeight: 700,
+    fontWeight: 800,
     cursor: "pointer",
   },
 
   primaryButtonSmall: {
-    background: "#0f172a",
-    color: "#fff",
+    background: "#111827",
+    color: "#ffffff",
     border: "none",
     borderRadius: 14,
     padding: "10px 14px",
-    fontWeight: 700,
+    fontWeight: 800,
     cursor: "pointer",
     fontSize: 13,
   },
 
   secondaryButton: {
-    background: "#fff",
-    color: "#334155",
-    border: "1px solid #d9e2ec",
+    background: "#ffffff",
+    color: "#374151",
+    border: "1px solid #d1d5db",
     borderRadius: 16,
     padding: "12px 18px",
-    fontWeight: 700,
+    fontWeight: 800,
     cursor: "pointer",
   },
 
   secondaryButtonSmall: {
-    background: "#fff",
-    color: "#334155",
-    border: "1px solid #d9e2ec",
+    background: "#ffffff",
+    color: "#374151",
+    border: "1px solid #d1d5db",
     borderRadius: 14,
     padding: "10px 14px",
-    fontWeight: 700,
+    fontWeight: 800,
     cursor: "pointer",
     fontSize: 13,
   },
@@ -1086,32 +1150,13 @@ const styles = {
     border: "1px solid #fecdd3",
     borderRadius: 14,
     padding: "10px 14px",
-    fontWeight: 700,
+    fontWeight: 800,
     cursor: "pointer",
     fontSize: 13,
   },
 
   activeButton: {
-    background: "#059669",
+    background: "#35a76b",
     cursor: "default",
-  },
-
-  errorBox: {
-    border: "1px solid #fecdd3",
-    background: "#fff1f2",
-    color: "#be123c",
-    borderRadius: 18,
-    padding: "14px 16px",
-    fontSize: 14,
-    marginBottom: 10,
-  },
-
-  successBox: {
-    border: "1px solid #bbf7d0",
-    background: "#f0fdf4",
-    color: "#15803d",
-    borderRadius: 18,
-    padding: "14px 16px",
-    fontSize: 14,
   },
 };
